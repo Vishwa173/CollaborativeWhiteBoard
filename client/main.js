@@ -11,21 +11,84 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
-let tool = 'pen';
+let startX = 0;
+let startY = 0;
+let tool = 'freehand';
+
+document.getElementById('freehandBtn').addEventListener('click', () => tool = 'freehand');
+document.getElementById('lineBtn').addEventListener('click', () => tool = 'line');
+document.getElementById('rectBtn').addEventListener('click', () => tool = 'rect');
+document.getElementById('circleBtn').addEventListener('click', () => tool = 'circle');
+document.getElementById('eraserBtn').addEventListener('click', () => tool = 'eraser');
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  socket.emit('clear');
+  tool = 'freehand';
+});
 
 canvas.addEventListener('mousedown', (e) => {
   isDrawing = true;
   const { offsetX, offsetY } = e;
-  lastX = offsetX;
-  lastY = offsetY;
-  context.beginPath();
-  context.moveTo(lastX, lastY);
+  startX = offsetX;
+  startY = offsetY;
+
+  if (tool === 'freehand') {
+    context.beginPath();
+    context.moveTo(startX, startY);
+  }
 });
 
-canvas.addEventListener('mouseup', () => {
+canvas.addEventListener('mouseup', (e) => {
+  if (!isDrawing) return;
   isDrawing = false;
+  context.strokeStyle = 'black';
+
+  const { offsetX, offsetY } = e;
+
+  if (tool === 'line') {
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.lineTo(offsetX, offsetY);
+    context.stroke();
+
+    socket.emit('info', {
+      type: 'line',
+      startX,
+      startY,
+      endX: offsetX,
+      endY: offsetY
+    });
+  }
+
+  else if (tool === 'rect') {
+    const width = offsetX - startX;
+    const height = offsetY - startY;
+    context.strokeRect(startX, startY, width, height);
+
+    socket.emit('info', {
+      type: 'rect',
+      startX,
+      startY,
+      width,
+      height
+    });
+  }
+
+  else if (tool === 'circle') {
+    const radius = Math.sqrt((offsetX - startX) ** 2 + (offsetY - startY) ** 2);
+    context.beginPath();
+    context.arc(startX, startY, radius, 0, Math.PI * 2);
+    context.stroke();
+
+    socket.emit('info', {
+      type: 'circle',
+      startX,
+      startY,
+      radius
+    });
+  }
+
   context.closePath();
 });
 
@@ -34,7 +97,7 @@ canvas.addEventListener('mousemove', (e) => {
 
   const { offsetX, offsetY } = e;
 
-  if (tool === 'pen') {
+  if (tool === 'freehand') {
     context.lineWidth = 2;
     context.strokeStyle = '#000';
     context.lineTo(offsetX, offsetY);
@@ -42,15 +105,17 @@ canvas.addEventListener('mousemove', (e) => {
 
     socket.emit('info', {
       type: 'draw',
-      fromX: lastX,
-      fromY: lastY,
+      fromX: startX,
+      fromY: startY,
       toX: offsetX,
       toY: offsetY
     });
 
-    lastX = offsetX;
-    lastY = offsetY;
-  } else if (tool === 'eraser') {
+    startX = offsetX;
+    startY = offsetY;
+  }
+
+  else if (tool === 'eraser') {
     context.clearRect(offsetX - 5, offsetY - 5, 10, 10);
     socket.emit('info', {
       type: 'erase',
@@ -61,31 +126,43 @@ canvas.addEventListener('mousemove', (e) => {
   }
 });
 
-document.getElementById('clearBtn').addEventListener('click', () => {
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  socket.emit('clear');
-  tool = 'pen';
-});
-
-document.getElementById('eraserBtn').addEventListener('click', () => {
-  tool = 'eraser';
-});
-
 socket.on('info', (data) => {
+  context.strokeStyle = 'red';
+  context.lineWidth = 2;
+
   if (data.type === 'draw') {
-    context.lineWidth = 2;
-    context.strokeStyle = 'red';
     context.beginPath();
     context.moveTo(data.fromX, data.fromY);
     context.lineTo(data.toX, data.toY);
     context.stroke();
     context.closePath();
-  } else if (data.type === 'erase') {
+  }
+
+  else if (data.type === 'erase') {
     context.clearRect(data.x - 5, data.y - 5, data.size, data.size);
+  }
+
+  else if (data.type === 'line') {
+    context.beginPath();
+    context.moveTo(data.startX, data.startY);
+    context.lineTo(data.endX, data.endY);
+    context.stroke();
+    context.closePath();
+  }
+
+  else if (data.type === 'rect') {
+    context.strokeRect(data.startX, data.startY, data.width, data.height);
+  }
+
+  else if (data.type === 'circle') {
+    context.beginPath();
+    context.arc(data.startX, data.startY, data.radius, 0, Math.PI * 2);
+    context.stroke();
+    context.closePath();
   }
 });
 
 socket.on('clear', () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
-  tool = 'pen';
+  tool = 'freehand';
 });

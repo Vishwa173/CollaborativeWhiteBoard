@@ -3,17 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Game Template</title>
+  <title>Collaborative Whiteboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>White Board</h1>
-  <button id ="clearBtn">clear</button>
-  <button id = "eraserBtn">eraser</button>
+
+  <div id="toolbar">
+    <button id="freehandBtn">Freehand</button>
+    <button id="lineBtn">Line</button>
+    <button id="rectBtn">Rect</button>
+    <button id="circleBtn">Circle</button>
+    <button id="eraserBtn">Eraser</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+
   <canvas id="whiteboard"></canvas>
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
- 
